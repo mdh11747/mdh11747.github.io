@@ -1,0 +1,144 @@
+body {
+    background-color: rgb(173, 216, 230);
+    margin: 0;
+    overflow: visible;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+#toolbar {
+    height: 10vh;
+    background-color: rgba(0, 0, 0, 0.1);
+    position: fixed;
+    width: 100%;
+    list-style-type: none;
+    margin: 0;
+    overflow: hidden;
+    z-index: 10;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    font-family: 'Roboto', sans-serif;
+}
+
+.toolbar-item {
+    padding: 10px 20px;
+    font-size: calc(12px + 1vw); /* Adjusts font-size based on viewport width */
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.toolbar-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 15%; /* Adjust to position vertically as desired */
+    bottom: 15%; /* Adjust to position vertically as desired */
+    width: 1px;
+    background-color: black; /* Color of the vertical line */
+    height: 70%; /* Adjust the height of the line */
+}
+
+.toolbar-item a {
+    display: block;
+    color: black;
+    text-align: center;
+    padding: 10px;
+    text-decoration: none;
+}
+
+#site-content {
+    padding: 0;
+    padding-top: 10vh;
+}
+
+#u-divider {
+    display: flex;
+    height: 10vh;
+    background-color: rgb(151, 200, 216);
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#name {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+}
+
+#img-desc {
+    height: 70vh;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.img-item {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+}
+
+#self-img {
+    justify-content: center;
+    align-items: center;
+}
+
+#self-img img {
+    object-fit: cover;
+    object-position: center;
+}
+
+#desc {
+    margin: 40px;
+    background-color: black;
+    border-radius: 10px;
+}
+
+#terminal-text {
+    color: white;
+    font-family: 'Cascadia Code', sans-serif;
+    padding: 20px;
+    font-size:3.8vh;
+}
+
+.hidden {
+    visibility: hidden;
+}
+
+#terminal-text p {
+    overflow: hidden;
+    white-space: nowrap;
+    display: inline-block;
+    border-right: .15em solid transparent; /* Start with a transparent border */
+    width: 0; /* Start with zero width */
+    visibility: hidden; /* Initially hidden */
+}
+
+#terminal-text p.typing {
+    border-right: .15em solid white; /* Apply the border to the currently typing line */
+    visibility: visible; /* Make it visible when typing starts */
+}
+
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: white; }
+}
+
+#footer-content {
+    height: 10vh;
+    background-color: rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    text-align: center;
+}
