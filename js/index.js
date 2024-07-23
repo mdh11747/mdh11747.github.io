@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 document.getElementById('sendButton').addEventListener('click', sendMessage);
-document.getElementById('userInput').addEventListener('keydown', function(event) {
+document.getElementById('userInput').addEventListener('keydown', function (event) {
     if (event.key === 'Enter') {
         sendMessage();
     }
@@ -49,44 +49,23 @@ async function sendMessage() {
     document.getElementById('userInput').value = '';
 
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const response = await fetch('https://morning-hollows-92414-17784c643d81.herokuapp.com/api/chat', { // Replace with your Heroku app URL
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer sk-proj-z4cYy79eG2WmbUE9CZAVT3BlbkFJmY7sEPHUqvKnYBHXg3b2`
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',  // Ensure the correct model is specified
-                messages: [
-                    { role: 'user', content: userInput }
-                ],
-                stop: null,
-                temperature: 0.7
-            })
+            body: JSON.stringify({ message: userInput })
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Error Data:', errorData); // Log detailed error response
-            if (errorData.error && errorData.error.message) {
-                throw new Error(`API error: ${errorData.error.message}`);
-            } else {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log('API Response:', data); // Log the response for debugging
-        if (data.choices && data.choices.length > 0 && data.choices[0].message) {
-            const botResponse = data.choices[0].message.content.trim();
-            chatbox.innerHTML += `<p><strong>Bot:</strong> ${botResponse}</p>`;
-        } else {
-            console.error('Unexpected API response format:', data);
-            chatbox.innerHTML += `<p><strong>Bot:</strong> Unexpected response format</p>`;
-        }
+        chatbox.innerHTML += `<p><strong>Bot:</strong> ${data.content}</p>`;
         chatbox.scrollTop = chatbox.scrollHeight;
     } catch (error) {
         console.error('Error:', error);
-        chatbox.innerHTML += `<p><strong>Bot:</strong> ${error.message}</p>`;
+        chatbox.innerHTML += `<p><strong>Bot:</strong> Error fetching response</p>`;
     }
 }
