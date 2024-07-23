@@ -125,10 +125,8 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    flex: 0 0 auto;
     text-align: center;
-    border-top-right-radius:100px;
-    border-top-left-radius:100px;
+    border-radius:100px;
 }
 
 #about-me-div {
@@ -140,22 +138,51 @@ body {
 }
 
 #ai-section {
-    display:flex;
-    align-items: center;
+    display: flex;
+    align-items: stretch;
     justify-content: center;
+    max-height:75vh;
 }
 
 #intro {
-    flex:1;
-    padding: 0 10% 0 10%;
-    color:white;
+    flex: 1;
+    padding: 10% 10% 10% 10%; /* Adjust the padding as needed */
+    color: white;
 }
 
 #ai {
-    flex:1;
-    background-color:white;
-    height:20vh;
-    border-radius:100px;
-    padding:100px;
-    margin: 100px 100px 100px 0;
+    flex: 1;
+    display: flex;
+    padding: 5% 10% 5% 10%;
+    flex-direction: column;
+    border-radius: 100px;
+    justify-content: center;
+}
+
+#chatbox {
+    flex: 1;
+    background-color: white;
+    font-size: 12px;
+    color: black;
+    overflow-y:auto;
+    overflow:scroll;
+    max-height:80%;
+    border-top-right-radius: 25px;
+    border-top-left-radius: 25px;
+}
+
+#input-btn {
+    flex:.25;
+    display: flex;
+    flex-direction: row;
+}
+
+#userInput {
+    flex: 1; /* Adjust the height as needed */
+    border-bottom-left-radius: 25px;
+}
+
+#sendButton {
+    flex:.25;
+    border-bottom-right-radius: 25px;
 }

@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const lines = document.querySelectorAll('#terminal-text p');
 
     function typeLine(line, delay) {
@@ -32,3 +32,61 @@ document.addEventListener('DOMContentLoaded', function() {
         typeLine(lines[0], 0);
     }
 });
+
+document.getElementById('sendButton').addEventListener('click', sendMessage);
+document.getElementById('userInput').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+});
+
+async function sendMessage() {
+    const userInput = document.getElementById('userInput').value;
+    if (!userInput) return;
+
+    const chatbox = document.getElementById('chatbox');
+    chatbox.innerHTML += `<p><strong>You:</strong> ${userInput}</p>`;
+    document.getElementById('userInput').value = '';
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer sk-proj-z4cYy79eG2WmbUE9CZAVT3BlbkFJmY7sEPHUqvKnYBHXg3b2`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',  // Ensure the correct model is specified
+                messages: [
+                    { role: 'user', content: userInput }
+                ],
+                stop: null,
+                temperature: 0.7
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error Data:', errorData); // Log detailed error response
+            if (errorData.error && errorData.error.message) {
+                throw new Error(`API error: ${errorData.error.message}`);
+            } else {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        }
+
+        const data = await response.json();
+        console.log('API Response:', data); // Log the response for debugging
+        if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+            const botResponse = data.choices[0].message.content.trim();
+            chatbox.innerHTML += `<p><strong>Bot:</strong> ${botResponse}</p>`;
+        } else {
+            console.error('Unexpected API response format:', data);
+            chatbox.innerHTML += `<p><strong>Bot:</strong> Unexpected response format</p>`;
+        }
+        chatbox.scrollTop = chatbox.scrollHeight;
+    } catch (error) {
+        console.error('Error:', error);
+        chatbox.innerHTML += `<p><strong>Bot:</strong> ${error.message}</p>`;
+    }
+}
