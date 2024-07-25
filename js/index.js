@@ -45,7 +45,7 @@ async function sendMessage() {
     if (!userInput) return;
 
     const chatbox = document.getElementById('chatbox');
-    chatbox.innerHTML += `<p><strong>You:</strong> ${userInput}</p>`;
+    chatbox.innerHTML += `<p><strong>User:</strong> ${userInput}</p>`;
     document.getElementById('userInput').value = '';
 
     try {
@@ -62,10 +62,10 @@ async function sendMessage() {
         }
 
         const data = await response.json();
-        chatbox.innerHTML += `<p><strong>Bot:</strong> ${data.content}</p>`;
+        chatbox.innerHTML += `<p><strong>Assistant:</strong> ${data.content}</p>`;
         chatbox.scrollTop = chatbox.scrollHeight;
     } catch (error) {
         console.error('Error:', error);
-        chatbox.innerHTML += `<p><strong>Bot:</strong> Error fetching response</p>`;
+        chatbox.innerHTML += `<p><strong>Assistant:</strong> Error fetching response</p>`;
     }
 }

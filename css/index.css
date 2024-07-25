@@ -153,9 +153,8 @@ body {
 #ai {
     flex: 1;
     display: flex;
-    padding: 5% 10% 5% 10%;
+    margin: 5% 10% 5% 10%;
     flex-direction: column;
-    border-radius: 100px;
     justify-content: center;
 }
 
@@ -169,20 +168,34 @@ body {
     max-height:80%;
     border-top-right-radius: 25px;
     border-top-left-radius: 25px;
+    border: solid black;
+    border-bottom: none;
+    padding: 1%;
 }
 
 #input-btn {
     flex:.25;
     display: flex;
     flex-direction: row;
+    border:none;
 }
 
 #userInput {
     flex: 1; /* Adjust the height as needed */
     border-bottom-left-radius: 25px;
+    border: solid black;
+    border-right: none;
+    outline:none;
 }
 
 #sendButton {
     flex:.25;
     border-bottom-right-radius: 25px;
+    background-image: url('../images/send.png');
+    background-size:50%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: solid black;
+    border-left: none;
+    background-color: white;
 }
