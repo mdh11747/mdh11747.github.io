@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Magnus Hodgson</title>
     <link rel="stylesheet" href="css/index.css">
+    <script type="module" src="js/contact.js" defer></script>
     <link href="https://fonts.cdnfonts.com/css/cascadia-code" rel="stylesheet">
 </head>
 
@@ -21,7 +22,8 @@
             <h1 id="name">Magnus Hodgson</h1>
         </div>
         <div id="form-container">
-            <form id="contact" action="https://gentle-crag-58226-204240137d14.herokuapp.com/send_email.php" method="POST">
+            <form id="contact" action="https://gentle-crag-58226-204240137d14.herokuapp.com/send_email.php"
+                method="POST">
                 <label for="fname">First Name</label><br>
                 <input type="text" id="fname" name="fname" required><br>
 
@@ -39,6 +41,14 @@
 
                 <input type="submit" value="Send">
             </form>
+        </div>
+        <div id="result-container">
+            <div id="result">
+                <h1 class="success">Success</h1>
+                <h2 class="success">Email was sent successfully!</h2>
+                <h1 class="failure">Failure</h1>
+                <h2 class="failure">Email failed to send. Please try again later.</h2>
+            </div>
         </div>
     </div>
 </body>
