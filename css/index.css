@@ -54,6 +54,10 @@ body {
 
     }
 
+    #intro {
+        font-size: 3vh !important;
+    }
+
 }
 
 #site-content {
@@ -226,7 +230,7 @@ body {
     padding: 10% 10% 10% 10%;
     /* Adjust the padding as needed */
     color: white;
-    font-size: 20px;
+    font-size: 2vw;
 }
 
 #ai {
