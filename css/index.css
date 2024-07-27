@@ -36,7 +36,7 @@ body {
 
     #img-terminal {
         flex-direction: column !important;
-        height:110vh !important;
+        height:105vh !important;
     }
 
     #self-img {
@@ -44,8 +44,13 @@ body {
         height: 45vh !important;
     }
     
+    #terminal {
+        width: 90vw !important;
+    }
+
     #terminal-text {
-        font-size: 3vh;
+        font-size: 2.5vh;
+
     }
 
 }
