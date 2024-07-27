@@ -284,3 +284,29 @@ body {
     border-left: none;
     background-color: white;
 }
+
+#contact {
+    padding-top: 10vh;
+    align-items: center;
+    justify-content:center;
+    width:100vw;
+    text-align:center;
+    height:80vh;
+    vertical-align: center;
+}
+
+#contact input {
+    margin:10px;
+    border-radius: 10px;
+    padding: 10px;
+    width: 20%;
+}
+
+#contact textarea {
+    margin:10px;
+    resize:none;
+    border-radius: 10px;
+    width:20%;
+    height: 40%;
+    padding:5px;
+}
