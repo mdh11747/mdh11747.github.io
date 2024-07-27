@@ -8,7 +8,7 @@ body {
 @media(max-width: 1000px) {
     #ai-section {
         flex-direction: column !important;
-        height: 175vh !important;
+        height: 80vh !important;
     }
 
     #intro {
@@ -16,9 +16,9 @@ body {
         padding: 5% 5% 5% 5% !important;
     }
 
+
     #ai {
-        max-height: 100vh;
-        height:120vh;
+        height:40vh;
     }
     
     #name {
@@ -212,7 +212,6 @@ body {
     display: flex;
     align-items: stretch;
     justify-content: center;
-    max-height: 75vh;
 }
 
 #intro {
