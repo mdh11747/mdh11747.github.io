@@ -5,25 +5,65 @@ body {
     font-family: Arial, Helvetica, sans-serif;
 }
 
+@media(max-width: 1000px) {
+    #ai-section {
+        flex-direction: column !important;
+        height: 150vh !important;
+    }
+
+    #intro {
+        flex: .25 !important;
+        padding: 5% 5% 5% 5% !important;
+    }
+
+    #ai {
+        max-height: 100vh;
+        height:120vh;
+    }
+    
+    #name {
+        display: none !important;
+    }
+
+    #skinny-name {
+        display: block !important;
+    }
+
+    #toolbar a {
+        height: 6vh !important;
+    }
+
+
+    #img-terminal {
+        flex-direction: column !important;
+        height:125vh !important;
+    }
+
+    #self-img {
+        margin-bottom: 10%;
+    }
+
+}
+
 #site-content {
     padding: 0;
 }
 
 #toolbar {
-    flex:1;
-    display:flex;
+    flex: 1;
+    display: flex;
 }
 
 #toolbar a {
-    flex:1;
-    display:flex;
-    color:white;
+    flex: 1;
+    display: flex;
+    color: white;
     background-color: rgb(30, 120, 255);
     margin: 0 6% 0 6%;
     clip-path: polygon(0 0, 100% 0, 100% 100%, 20% 100%);
     padding-left: 10px;
     height: 4vh;
-    font-weight:bold;
+    font-weight: bold;
     font-family: serif;
     justify-content: center;
     align-items: center;
@@ -40,7 +80,7 @@ body {
 }
 
 #name {
-    flex:.4;
+    flex: .4;
     width: 200px;
     height: 100px;
     background: rgb(30, 120, 255);
@@ -51,23 +91,27 @@ body {
     font-weight: bold;
     font-family: serif;
     color: white;
-    font-size:2.5vw;
+    font-size: 2.5vw;
 }
 
-#img-desc {
+#skinny-name {
+    display: none;
+    width: 100%;
+    align-items: center;
+    text-align: center;
+    background: rgb(30, 120, 255);
+    color:white;
+    margin-top: 0;
+    font-weight: bold;
+    font-family: serif;
+}
+
+#img-terminal {
     height: 75vh;
     display: flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
-}
-
-.img-item {
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    border-radius: 10px;
-    margin: 40px;
 }
 
 #self-img {
@@ -80,7 +124,11 @@ body {
 }
 
 
-#desc {
+#terminal {
+    flex: 1;
+    overflow: hidden;
+    border-radius: 10px;
+    margin: 40px;
     background-color: black;
 }
 
@@ -88,7 +136,7 @@ body {
     color: white;
     font-family: 'Cascadia Code', sans-serif;
     padding: 20px;
-    font-size:3.8vh;
+    font-size: 3.8vh;
 }
 
 .hidden {
@@ -99,24 +147,41 @@ body {
     overflow: hidden;
     white-space: nowrap;
     display: inline-block;
-    border-right: .15em solid transparent; /* Start with a transparent border */
-    width: 0; /* Start with zero width */
-    visibility: hidden; /* Initially hidden */
+    border-right: .15em solid transparent;
+    /* Start with a transparent border */
+    width: 0;
+    /* Start with zero width */
+    visibility: hidden;
+    /* Initially hidden */
 }
 
 #terminal-text p.typing {
-    border-right: .15em solid white; /* Apply the border to the currently typing line */
-    visibility: visible; /* Make it visible when typing starts */
+    border-right: .15em solid white;
+    /* Apply the border to the currently typing line */
+    visibility: visible;
+    /* Make it visible when typing starts */
 }
 
 @keyframes typing {
-    from { width: 0; }
-    to { width: 100%; }
+    from {
+        width: 0;
+    }
+
+    to {
+        width: 100%;
+    }
 }
 
 @keyframes blink-caret {
-    from, to { border-color: transparent; }
-    50% { border-color: white; }
+
+    from,
+    to {
+        border-color: transparent;
+    }
+
+    50% {
+        border-color: white;
+    }
 }
 
 #footer-content {
@@ -126,7 +191,7 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    border-radius:100px;
+    border-radius: 100px;
 }
 
 #about-me-div {
@@ -134,20 +199,22 @@ body {
 }
 
 #about-me {
-    color:white;
+    color: white;
 }
 
 #ai-section {
     display: flex;
     align-items: stretch;
     justify-content: center;
-    max-height:75vh;
+    max-height: 75vh;
 }
 
 #intro {
     flex: 1;
-    padding: 10% 10% 10% 10%; /* Adjust the padding as needed */
+    padding: 10% 10% 10% 10%;
+    /* Adjust the padding as needed */
     color: white;
+    font-size: 20px;
 }
 
 #ai {
@@ -163,9 +230,10 @@ body {
     background-color: white;
     font-size: 12px;
     color: black;
-    overflow-y:auto;
-    overflow:scroll;
-    max-height:80%;
+    overflow-y: auto;
+    overflow: scroll;
+    max-height: 80%;
+    min-height: 80%;
     border-top-right-radius: 25px;
     border-top-left-radius: 25px;
     border: solid black;
@@ -174,25 +242,26 @@ body {
 }
 
 #input-btn {
-    flex:.25;
+    flex: .25;
     display: flex;
     flex-direction: row;
-    border:none;
+    border: none;
 }
 
 #userInput {
-    flex: 1; /* Adjust the height as needed */
+    flex: 1;
+    /* Adjust the height as needed */
     border-bottom-left-radius: 25px;
     border: solid black;
     border-right: none;
-    outline:none;
+    outline: none;
 }
 
 #sendButton {
-    flex:.25;
+    flex: .25;
     border-bottom-right-radius: 25px;
     background-image: url('../images/send.png');
-    background-size:50%;
+    background-size: 40%;
     background-repeat: no-repeat;
     background-position: center;
     border: solid black;
