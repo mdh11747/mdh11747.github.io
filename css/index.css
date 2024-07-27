@@ -8,7 +8,7 @@ body {
 @media(max-width: 1000px) {
     #ai-section {
         flex-direction: column !important;
-        height: 150vh !important;
+        height: 175vh !important;
     }
 
     #intro {
@@ -36,11 +36,16 @@ body {
 
     #img-terminal {
         flex-direction: column !important;
-        height:125vh !important;
+        height:110vh !important;
     }
 
     #self-img {
         margin-bottom: 10%;
+        height: 45vh !important;
+    }
+    
+    #terminal-text {
+        font-size: 3vh;
     }
 
 }
@@ -203,6 +208,7 @@ body {
 }
 
 #ai-section {
+    padding-top: 10%;
     display: flex;
     align-items: stretch;
     justify-content: center;
