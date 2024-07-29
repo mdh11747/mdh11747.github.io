@@ -339,12 +339,15 @@ body {
     padding: 10px;
     width: 40%;
     background-color: white;
+    border:solid black;
+    border-width: 2px;
 }
 
 #contact input[type="submit"] {
     background-image: linear-gradient(45deg, rgb(0, 174, 255), rgb(0, 115, 255));
     color:white;
     border: solid white;
+    border-width: 2px;
 }
 
 #contact textarea {
@@ -355,6 +358,7 @@ body {
     height: 40%;
     padding:5px;
     border:solid black;
+    border-width: 2px;
 }
 
 #result-container {
