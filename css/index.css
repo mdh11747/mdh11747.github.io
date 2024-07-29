@@ -72,6 +72,14 @@ body {
         border-radius:40px !important; 
     }
 
+    #contact-container {
+        flex-direction:column !important;
+    }
+
+    #contact {
+        padding-bottom: 5vh !important;
+    }
+
 }
 
 #site-content {
@@ -299,14 +307,29 @@ body {
     background-color: white;
 }
 
+#contact-container {
+    display:flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width:94vw;
+    vertical-align: center;
+    margin:10vh 3vw 10vh 3vw;
+}
+
 #contact {
-    padding-top: 10vh;
-    padding-bottom: 10vh;
+    flex:1;
+    color:white;
+    font-family: serif;
+    font-size: 100%;
+    background-image: linear-gradient(45deg, rgb(0, 72, 255), rgb(0, 234, 255));
+    border-radius: 100px;
+    padding-top: 5vh;
+    padding-bottom: 5vh;
     align-items: center;
     justify-content:center;
-    width:100vw;
+    width:98vw;
     text-align:center;
-    height:80vh;
     vertical-align: center;
 }
 
@@ -358,4 +381,25 @@ body {
 
 .failure {
     display:none;
+}
+
+#spacer {
+    flex:.2;
+}
+
+#alternate-contact {
+    flex:1;
+    font-family: serif;
+    display:flex;
+    flex-direction: column;
+    color:white;
+    background-image: linear-gradient(45deg, rgb(0, 72, 255), rgb(0, 234, 255));
+    border-radius: 100px;
+    padding-top: 5vh;
+    padding-bottom: 5vh;
+    align-items: center;
+    justify-content:center;
+    width:98vw;
+    text-align:center;
+    vertical-align: center;
 }
