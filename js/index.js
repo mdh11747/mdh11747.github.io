@@ -69,3 +69,53 @@ async function sendMessage() {
         chatbox.innerHTML += `<p><strong>Assistant:</strong> Error fetching response</p>`;
     }
 }
+
+let lastScrollTop = 0; // Store the last scroll position
+
+window.addEventListener('scroll', function () {
+    const arrow1 = document.getElementById("arrow1");
+    const arrow2 = document.getElementById("arrow2");
+    const scrollHeight0 = 0;
+    const scrollHeightVh1 = 90;
+    const scrollHeight1 = window.innerHeight * (scrollHeightVh1 / 100);
+    const div = document.getElementById("footer-content");
+    const height = div.offsetHeight;
+    const scrollHeight2 = scrollHeight1 + height - 38.5 - 21.44 - 5 - 37 - 7.38;
+
+    const currentScroll = window.scrollY;
+
+    if (currentScroll > lastScrollTop) {
+        // Scrolling down
+        if (currentScroll > 0 && currentScroll < scrollHeight1) {
+            window.scrollTo({
+                top: scrollHeight1,
+                behavior: 'smooth'
+            });
+            arrow1.innerHTML = '&#8593';
+        } else if (currentScroll > scrollHeight1 && currentScroll < scrollHeight2) {
+            window.scrollTo({
+                top: scrollHeight2,
+                behavior: 'smooth'
+            });
+            arrow2.innerHTML = '&#8593';
+        }
+    } else {
+        // Scrolling up
+        if (currentScroll < scrollHeight2 && currentScroll >= scrollHeight1) {
+            window.scrollTo({
+                top: scrollHeight1 + 1,
+                behavior: 'smooth'
+            });
+            arrow2.innerHTML = '&#8595';
+            arrow1.innerHTML = '&#8593';
+        } else if (currentScroll < scrollHeight1 && currentScroll > scrollHeight0) {
+            window.scrollTo({
+                top: scrollHeight0,
+                behavior: 'smooth'
+            });
+            arrow1.innerHTML = '&#8595';
+        }
+    }
+
+    lastScrollTop = currentScroll <= 0 ? 0 : currentScroll; // For Mobile or negative scrolling
+});

@@ -80,6 +80,9 @@ body {
         padding-bottom: 5vh !important;
     }
 
+    #resume {
+        width:100vw !important;
+    }
 }
 
 #site-content {
@@ -113,7 +116,7 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin-top: 30px;
+    margin-top: 5vh;
 }
 
 #name {
@@ -231,6 +234,7 @@ body {
     justify-content: center;
     text-align: center;
     border-radius: 100px;
+    font-family:serif;
 }
 
 #about-me-div {
@@ -305,6 +309,35 @@ body {
     border: solid black;
     border-left: none;
     background-color: white;
+}
+
+#resume-div {
+    margin: 5vh 0 5vh 0;
+    display:flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width:100vw;
+    height:100vh;
+}
+
+#resume-header {
+    flex:1;
+    color:white;
+    font-family: serif;
+    align-items: center;
+    justify-content:center;
+    width:50%;
+    text-align:center;
+    margin-top:1vh;
+    margin-bottom:1vh;
+    vertical-align: center;
+}
+
+#resume {
+    flex:10;
+    width:50vw;
+    border: none;
 }
 
 #contact-container {
@@ -415,3 +448,4 @@ body {
     text-align:center;
     vertical-align: center;
 }
+
