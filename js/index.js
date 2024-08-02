@@ -73,6 +73,7 @@ async function sendMessage() {
 let lastScrollTop = 0; // Store the last scroll position
 
 window.addEventListener('scroll', function () {
+    if (window.innerWidth <= 1000) return; // Exit if window width is less than or equal to 1000px
     const arrow1 = document.getElementById("arrow1");
     const arrow2 = document.getElementById("arrow2");
     const scrollHeight0 = 0;
