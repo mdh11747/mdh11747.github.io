@@ -70,7 +70,8 @@ async function sendMessage() {
     }
 }
 
-let lastScrollTop = 0; // Store the last scroll position
+
+/*let lastScrollTop = 0; // Store the last scroll position
 
 window.addEventListener('scroll', function () {
     if (window.innerWidth <= 1000) return; // Exit if window width is less than or equal to 1000px
@@ -120,3 +121,4 @@ window.addEventListener('scroll', function () {
 
     lastScrollTop = currentScroll <= 0 ? 0 : currentScroll; // For Mobile or negative scrolling
 });
+*/

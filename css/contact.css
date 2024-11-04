@@ -1,0 +1,136 @@
+@media(max-width: 1000px) {
+
+    #contact input {
+        width: 60% !important;
+    }
+
+    #contact textarea {
+        width: 60% !important;
+        height: 20% !important;
+    }
+
+    #result {
+        height: 40vh !important;
+        border-radius: 40px !important;
+    }
+
+    #contact-container {
+        flex-direction: column !important;
+    }
+
+    #contact {
+        padding-bottom: 5vh !important;
+    }
+    
+}
+
+
+#contact-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 94vw;
+    vertical-align: center;
+    margin: 10vh 3vw 10vh 3vw;
+}
+
+#contact {
+    flex: 1;
+    color: white;
+    font-family: serif;
+    font-size: 100%;
+    background-image: linear-gradient(45deg, rgb(0, 72, 255), rgb(0, 234, 255));
+    border-radius: 100px;
+    padding-top: 5vh;
+    padding-bottom: 5vh;
+    align-items: center;
+    justify-content: center;
+    width: 98vw;
+    text-align: center;
+    vertical-align: center;
+}
+
+#contact input {
+    margin: 10px;
+    border-radius: 10px;
+    padding: 10px;
+    width: 40%;
+    background-color: white;
+    border: solid black;
+    border-width: 2px;
+}
+
+#contact input[type="submit"] {
+    background-image: linear-gradient(45deg, rgb(0, 174, 255), rgb(0, 115, 255));
+    color: white;
+    border: solid white;
+    border-width: 2px;
+}
+
+#contact textarea {
+    margin: 10px;
+    resize: none;
+    border-radius: 10px;
+    width: 40%;
+    height: 40%;
+    padding: 5px;
+    border: solid black;
+    border-width: 2px;
+}
+
+#result-container {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    vertical-align: center;
+}
+
+#result {
+    margin-top: 10vh;
+    margin-bottom: 10vh;
+    background-image: linear-gradient(45deg, rgb(0, 72, 255), rgb(0, 234, 255));
+    border-radius: 100px;
+    height: 60vh;
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+
+#result h1,
+h2 {
+    color: white;
+}
+
+.success {
+    display: none;
+}
+
+.failure {
+    display: none;
+}
+
+#spacer {
+    flex: .2;
+}
+
+#alternate-contact {
+    flex: 1;
+    font-family: serif;
+    display: flex;
+    flex-direction: column;
+    color: white;
+    background-image: linear-gradient(45deg, rgb(0, 72, 255), rgb(0, 234, 255));
+    border-radius: 100px;
+    padding-top: 5vh;
+    padding-bottom: 5vh;
+    align-items: center;
+    justify-content: center;
+    width: 98vw;
+    text-align: center;
+    vertical-align: center;
+}
