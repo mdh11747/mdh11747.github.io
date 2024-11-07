@@ -1,3 +1,17 @@
+@media(max-width: 1000px) {
+    #projects img {
+        width: 70vw !important;
+        margin: 2.5vh 0 2.5vh 0 !important;
+    }
+    #project h1 {
+        margin: 2.5vh 0 2.5vh 0 !important;
+    }
+    #projects {
+        width:80vw !important;
+        border-radius: 40px !important;
+    }
+}
+
 #projects {
     display:flex;
     flex-direction: column;
