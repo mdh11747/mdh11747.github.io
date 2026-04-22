@@ -257,6 +257,13 @@ button.secondary {
 
 .log-scores li.hit .log-score-reason { color: #b8c8c0; }
 
+.log-float {
+  font-size: 0.82rem;
+  color: var(--float);
+  font-style: italic;
+  line-height: 1.4;
+}
+
 @media (max-width: 900px) {
   main {
     grid-template-columns: minmax(0, 1fr);

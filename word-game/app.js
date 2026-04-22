@@ -9,21 +9,29 @@
   // into the Heroku backend.
   const MODEL_INSTRUCTIONS = [
     'You are a semantic-relatedness judge for a word-association game called Better Linxicon.',
-    'For each target word, rate how closely it relates to the candidate word on a 0-100 integer scale.',
-    'Use these anchors precisely:',
-    '  0-20  = unrelated (no meaningful association)',
-    '  21-40 = faint or very abstract link',
-    '  41-60 = clear but indirect association',
-    '  61-80 = strongly related (shared domain, common co-occurrence, or typical pairing)',
-    '  81-100 = near-synonym, part-of, iconic pairing, or cultural shorthand',
+    'You will receive a candidate word and a list of target words. Identify which targets are related to the candidate strongly enough to form a LINK.',
+    'A link forms at relatedness score 60 or higher on a 0-100 scale.',
+    '',
+    'Scoring anchors:',
+    '  0-20  = unrelated (no meaningful association) [NO LINK]',
+    '  21-40 = faint or very abstract connection    [NO LINK]',
+    '  41-59 = clear but indirect association        [STILL NO LINK]',
+    '  60-80 = strongly related (shared domain, common co-occurrence, typical pairing) [LINK]',
+    '  81-100 = near-synonym, part-of, iconic pairing, or cultural shorthand          [LINK]',
+    '',
     'Rules:',
     '  - Be decisive. Do NOT reward merely sharing a letter, sounding alike, or rhyming.',
     '  - Do NOT reward generic relations like "both are nouns" or "both exist".',
     '  - Metaphor, idiom, and cultural association count. Surface-form similarity does not.',
-    '  - If a target word is gibberish or unrecognized, score 0.',
-    'Output format (strict): a single JSON object, no prose, no markdown fences, no commentary:',
-    '  {"scores":[{"word":"<target>","score":<0-100>,"reason":"<short>"}, ...]}',
-    'Return exactly one entry per target word, preserving the order provided.'
+    '  - If the candidate is gibberish or an unrecognized word, produce zero links.',
+    '',
+    'Output format — strict JSON only, no prose, no markdown fences, no commentary:',
+    '  {"links":[{"word":"<target>","score":<integer 60-100>,"reason":"<one short sentence>"}],"overallReason":"<one short sentence>"}',
+    '',
+    'CRITICAL size rules (the response gets truncated if it is too long):',
+    '  - Include ONLY targets that scored 60 or higher. OMIT every target below 60 entirely — do not list them at all.',
+    '  - Provide "overallReason" ONLY when "links" is empty; it should explain in one sentence why the candidate has no meaningful connection to any target. When at least one link exists, set "overallReason" to an empty string "".',
+    '  - Keep each "reason" to one short sentence, under 15 words.'
   ].join('\n');
 
   // Prompt for generating new start-word pairs. The goal is maximum
@@ -44,24 +52,15 @@
     '  {"left":"<word>","right":"<word>","rationale":"<1 sentence on why these are maximally unrelated>"}'
   ].join('\n');
 
-  async function generateStartWords() {
+  async function generateStartWords({ onRetry } = {}) {
     if (!BACKEND_URL) throw new Error('No backend URL configured.');
     const nonce = Math.random().toString(36).slice(2, 10);
     const prompt = `${WORD_GEN_INSTRUCTIONS}\n\nVariety nonce (ignore for content, but use to produce a different answer than you would without it): ${nonce}`;
-
-    const res = await fetch(BACKEND_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt }),
-    });
-    if (!res.ok) throw new Error(`Backend ${res.status}`);
-    const data = await res.json();
-    const content = data?.content ?? data?.message ?? '';
-    const parsed = extractJson(content);
-    if (!parsed || typeof parsed.left !== 'string' || typeof parsed.right !== 'string') {
-      console.warn('[generate] bad model output:', content);
-      throw new Error('Model returned unparseable word pair.');
-    }
+    const parsed = await callAndParse(
+      prompt,
+      p => typeof p.left === 'string' && typeof p.right === 'string',
+      { onRetry }
+    );
     const clean = s => s.trim().toLowerCase().replace(/[^a-z\- ]/g, '');
     const left = clean(parsed.left);
     const right = clean(parsed.right);
@@ -100,54 +99,91 @@
 
   function extractJson(text) {
     if (!text) return null;
+    // Normalize curly quotes the model sometimes emits, which break JSON.parse.
+    const normalized = text
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'");
     // Strip markdown fences if the model wrapped its output.
-    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const body = fenced ? fenced[1] : text;
-    // Find the first { and last } and try to parse that slice.
+    const fenced = normalized.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const body = fenced ? fenced[1] : normalized;
+    // First try: naive first-{ to last-} slice.
     const first = body.indexOf('{');
     const last = body.lastIndexOf('}');
     if (first === -1 || last === -1 || last <= first) return null;
-    const slice = body.slice(first, last + 1);
-    try { return JSON.parse(slice); } catch { return null; }
-  }
-
-  async function scoreRelatedness(candidate, targets) {
-    if (!BACKEND_URL) throw new Error('No backend URL configured (edit config.js).');
-    const prompt = buildPrompt(candidate, targets);
-
-    const res = await fetch(BACKEND_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: prompt }),
-    });
-
-    if (!res.ok) {
-      let msg = `Backend ${res.status}`;
-      try { const err = await res.json(); msg = err?.error || err?.message || msg; } catch {}
-      throw new Error(msg);
-    }
-
-    const data = await res.json();
-    const content = data?.content ?? data?.message ?? '';
-    const parsed = extractJson(content);
-    if (!parsed || !Array.isArray(parsed.scores)) {
-      console.warn('[score] unparseable model output:', content);
-      throw new Error('Model returned unparseable output. Try again.');
-    }
-
-    const scores = {};
-    for (const entry of parsed.scores) {
-      if (entry && typeof entry.word === 'string' && Number.isFinite(entry.score)) {
-        scores[entry.word.toLowerCase()] = {
-          score: Math.max(0, Math.min(100, Math.round(entry.score))),
-          reason: entry.reason || ''
-        };
+    try { return JSON.parse(body.slice(first, last + 1)); } catch {}
+    // Second try: scan forward and match balanced braces from `first`, ignoring
+    // braces that appear inside string literals. Useful when the model wrote
+    // multiple objects or trailing prose.
+    let depth = 0, inStr = false, esc = false;
+    for (let i = first; i < body.length; i++) {
+      const ch = body[i];
+      if (inStr) {
+        if (esc) { esc = false; continue; }
+        if (ch === '\\') { esc = true; continue; }
+        if (ch === '"') inStr = false;
+        continue;
+      }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          try { return JSON.parse(body.slice(first, i + 1)); } catch { return null; }
+        }
       }
     }
-    for (const t of targets) {
-      if (!(t in scores)) scores[t] = { score: 0, reason: 'no response from model' };
+    return null;
+  }
+
+  // Shared call + parse + one-shot retry helper. `validate` is run against the
+  // parsed JSON; if it returns false, we retry once with a stricter nudge.
+  async function callAndParse(prompt, validate, { onRetry } = {}) {
+    async function attempt(promptText, attemptIdx) {
+      const res = await fetch(BACKEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: promptText }),
+      });
+      if (!res.ok) {
+        let msg = `Backend ${res.status}`;
+        try { const err = await res.json(); msg = err?.error || err?.message || msg; } catch {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      const content = data?.content ?? data?.message ?? '';
+      const parsed = extractJson(content);
+      if (parsed && validate(parsed)) return parsed;
+
+      console.warn(`[llm] attempt ${attemptIdx} could not be parsed. Raw content:`, content);
+      if (attemptIdx >= 2) {
+        throw new Error('Model returned unparseable output after retry. See console for the raw response.');
+      }
+      if (onRetry) onRetry();
+      const stricter = `${promptText}\n\n[RETRY NOTICE] Your previous response was not valid JSON or did not match the required shape. Reply with ONLY the JSON object described above. No prose, no apologies, no markdown fences, no commentary before or after.`;
+      return attempt(stricter, attemptIdx + 1);
     }
-    return scores;
+    return attempt(prompt, 1);
+  }
+
+  async function scoreRelatedness(candidate, targets, { onRetry } = {}) {
+    if (!BACKEND_URL) throw new Error('No backend URL configured (edit config.js).');
+    const prompt = buildPrompt(candidate, targets);
+    const parsed = await callAndParse(prompt, p => Array.isArray(p.links), { onRetry });
+
+    const targetSet = new Set(targets);
+    const links = [];
+    for (const entry of parsed.links) {
+      if (!entry || typeof entry.word !== 'string' || !Number.isFinite(entry.score)) continue;
+      const word = entry.word.toLowerCase();
+      if (!targetSet.has(word)) continue;
+      links.push({
+        word,
+        score: Math.max(0, Math.min(100, Math.round(entry.score))),
+        reason: (entry.reason || '').toString().trim(),
+      });
+    }
+    const overallReason = (parsed.overallReason || '').toString().trim();
+    return { links, overallReason };
   }
 
   // ---------- DOM ----------
@@ -319,7 +355,7 @@
     statusEl.className = `status ${cls}`.trim();
   }
 
-  function appendLog(candidate, scoreMap) {
+  function appendLog(candidate, links, overallReason) {
     const li = document.createElement('li');
 
     const header = document.createElement('div');
@@ -327,27 +363,37 @@
     header.textContent = candidate;
     li.appendChild(header);
 
-    const rows = document.createElement('ul');
-    rows.className = 'log-scores';
-    const sorted = Object.entries(scoreMap).sort(([, a], [, b]) => b.score - a.score);
-    for (const [word, info] of sorted) {
-      const row = document.createElement('li');
-      row.className = info.score >= state.threshold ? 'hit' : 'miss';
+    if (links.length > 0) {
+      const rows = document.createElement('ul');
+      rows.className = 'log-scores';
+      const sorted = [...links].sort((a, b) => b.score - a.score);
+      for (const info of sorted) {
+        const row = document.createElement('li');
+        row.className = 'hit';
 
-      const label = document.createElement('span');
-      label.className = 'log-score-label';
-      label.textContent = `${word}: ${info.score}`;
-      row.appendChild(label);
+        const label = document.createElement('span');
+        label.className = 'log-score-label';
+        label.textContent = `${info.word}: ${info.score}`;
+        row.appendChild(label);
 
-      if (info.reason) {
-        const reason = document.createElement('span');
-        reason.className = 'log-score-reason';
-        reason.textContent = info.reason;
-        row.appendChild(reason);
+        if (info.reason) {
+          const reason = document.createElement('span');
+          reason.className = 'log-score-reason';
+          reason.textContent = info.reason;
+          row.appendChild(reason);
+        }
+        rows.appendChild(row);
       }
-      rows.appendChild(row);
+      li.appendChild(rows);
+    } else {
+      const floatMsg = document.createElement('div');
+      floatMsg.className = 'log-float';
+      floatMsg.textContent = overallReason
+        ? `Floating — ${overallReason}`
+        : 'Floating — no meaningful link to anything on the board.';
+      li.appendChild(floatMsg);
     }
-    li.appendChild(rows);
+
     logList.prepend(li);
   }
 
@@ -360,7 +406,9 @@
 
     let left, right, usedFallback = false;
     try {
-      [left, right] = await generateStartWords();
+      [left, right] = await generateStartWords({
+        onRetry: () => setStatus('The model\'s first reply was malformed. Retrying...'),
+      });
     } catch (err) {
       console.warn('[startGame] AI generation failed, falling back to seed list:', err.message);
       [left, right] = pickTwoWords();
@@ -408,29 +456,35 @@
 
     const existingWords = state.nodes.map(n => n.label);
     try {
-      const scoreMap = await scoreRelatedness(word, existingWords);
+      const { links, overallReason } = await scoreRelatedness(word, existingWords, {
+        onRetry: () => setStatus(`Scoring "${word}"... retrying, the model's first reply was malformed.`),
+      });
 
       const newId = state.nodes.length ? Math.max(...state.nodes.map(n => n.id)) + 1 : 0;
       state.nodes.push({ id: newId, label: word, kind: 'float' });
 
+      const byLabel = new Map(state.nodes.map(n => [n.label, n]));
       let linkedCount = 0;
-      for (const existing of state.nodes) {
-        if (existing.id === newId) continue;
-        const info = scoreMap[existing.label];
-        if (info && info.score >= state.threshold) {
-          addEdge(newId, existing.id, info.score, info.reason);
-          linkedCount++;
-        }
+      for (const link of links) {
+        const target = byLabel.get(link.word);
+        if (!target || target.id === newId) continue;
+        addEdge(newId, target.id, link.score, link.reason);
+        linkedCount++;
       }
 
       recomputeConnectivity();
-      appendLog(word, scoreMap);
+      appendLog(word, links, overallReason);
       redraw();
       input.value = '';
 
       if (!state.won) {
-        if (linkedCount === 0) setStatus(`"${word}" didn't cross ${state.threshold}% with anything. It's floating.`);
-        else setStatus(`"${word}" linked to ${linkedCount} word${linkedCount > 1 ? 's' : ''}.`);
+        if (linkedCount === 0) {
+          setStatus(overallReason
+            ? `"${word}" floats — ${overallReason}`
+            : `"${word}" didn't link to anything. It's floating.`);
+        } else {
+          setStatus(`"${word}" linked to ${linkedCount} word${linkedCount > 1 ? 's' : ''}.`);
+        }
       }
     } catch (err) {
       setStatus(`Error: ${err.message}`, 'error');
