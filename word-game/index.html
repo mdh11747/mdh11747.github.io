@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Better Linxicon</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Better Linxicon</h1>
+    <p class="tagline">Chain related words between the two endpoints. An LLM scores each link.</p>
+  </header>
+
+  <main>
+    <section class="board">
+      <div class="endpoints">
+        <div class="endpoint endpoint-left">
+          <span class="label">Start</span>
+          <span id="word-left" class="word">&mdash;</span>
+        </div>
+        <div class="endpoint endpoint-right">
+          <span class="label">End</span>
+          <span id="word-right" class="word">&mdash;</span>
+        </div>
+      </div>
+      <svg id="graph" aria-label="word graph"></svg>
+      <div id="status" class="status" aria-live="polite"></div>
+    </section>
+
+    <section class="controls">
+      <form id="word-form" autocomplete="off">
+        <input id="word-input" type="text" placeholder="type a word and press enter" maxlength="40" required />
+        <button type="submit" id="submit-btn">Link</button>
+        <button type="button" id="new-game-btn" class="secondary">New game</button>
+      </form>
+      <div id="threshold-info" class="muted"></div>
+    </section>
+
+    <section class="log">
+      <h2>Links</h2>
+      <ul id="log-list"></ul>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
