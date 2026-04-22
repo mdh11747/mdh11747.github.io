@@ -163,12 +163,23 @@
     return s < t ? `${s}__${t}` : `${t}__${s}`;
   }
 
+  function linkTooltip(d) {
+    const s = typeof d.source === 'object' ? d.source.label : '';
+    const t = typeof d.target === 'object' ? d.target.label : '';
+    const pair = (s && t) ? `${s} ↔ ${t}  (${d.score})` : `score ${d.score}`;
+    return d.reason ? `${pair}\n${d.reason}` : pair;
+  }
+
   function redraw() {
     const linkSel = linkGroup.selectAll('line').data(state.links, linkKey);
     linkSel.exit().remove();
-    linkSel.enter().append('line').attr('class', 'link').merge(linkSel)
+    const linkEnter = linkSel.enter().append('line').attr('class', 'link');
+    linkEnter.append('title');
+    const mergedLinks = linkEnter.merge(linkSel);
+    mergedLinks
       .attr('stroke', d => d.score >= 70 ? '#9ece6a' : d.score >= 50 ? '#7aa2f7' : '#4a5566')
       .attr('stroke-width', d => Math.max(1, d.score / 30));
+    mergedLinks.select('title').text(linkTooltip);
 
     const nodeSel = nodeGroup.selectAll('.node').data(state.nodes, d => d.id);
     nodeSel.exit().remove();
@@ -196,11 +207,11 @@
     simulation.alpha(0.7).restart();
   }
 
-  function addEdge(aId, bId, score) {
+  function addEdge(aId, bId, score, reason) {
     if (aId === bId) return;
     const key = aId < bId ? `${aId}__${bId}` : `${bId}__${aId}`;
     if (state.links.some(l => linkKey(l) === key)) return;
-    state.links.push({ source: aId, target: bId, score });
+    state.links.push({ source: aId, target: bId, score, reason: reason || '' });
     if (!state.adjacency.has(aId)) state.adjacency.set(aId, new Set());
     if (!state.adjacency.has(bId)) state.adjacency.set(bId, new Set());
     state.adjacency.get(aId).add(bId);
@@ -244,13 +255,33 @@
 
   function appendLog(candidate, scoreMap) {
     const li = document.createElement('li');
-    const pieces = Object.entries(scoreMap)
-      .sort(([, a], [, b]) => b.score - a.score)
-      .map(([word, info]) => {
-        const cls = info.score >= state.threshold ? 'hit' : 'miss';
-        return `<span class="log-score ${cls}">${word}: ${info.score}</span>`;
-      }).join(' &middot; ');
-    li.innerHTML = `<div class="log-candidate">${candidate}</div><div>${pieces}</div>`;
+
+    const header = document.createElement('div');
+    header.className = 'log-candidate';
+    header.textContent = candidate;
+    li.appendChild(header);
+
+    const rows = document.createElement('ul');
+    rows.className = 'log-scores';
+    const sorted = Object.entries(scoreMap).sort(([, a], [, b]) => b.score - a.score);
+    for (const [word, info] of sorted) {
+      const row = document.createElement('li');
+      row.className = info.score >= state.threshold ? 'hit' : 'miss';
+
+      const label = document.createElement('span');
+      label.className = 'log-score-label';
+      label.textContent = `${word}: ${info.score}`;
+      row.appendChild(label);
+
+      if (info.reason) {
+        const reason = document.createElement('span');
+        reason.className = 'log-score-reason';
+        reason.textContent = info.reason;
+        row.appendChild(reason);
+      }
+      rows.appendChild(row);
+    }
+    li.appendChild(rows);
     logList.prepend(li);
   }
 
@@ -301,7 +332,7 @@
         if (existing.id === newId) continue;
         const info = scoreMap[existing.label];
         if (info && info.score >= state.threshold) {
-          addEdge(newId, existing.id, info.score);
+          addEdge(newId, existing.id, info.score, info.reason);
           linkedCount++;
         }
       }

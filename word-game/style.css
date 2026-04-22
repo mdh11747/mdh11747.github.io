@@ -199,19 +199,60 @@ button.secondary {
   gap: 8px;
 }
 
-#log-list li {
+#log-list > li {
   font-size: 0.88rem;
   line-height: 1.4;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: var(--panel-soft);
   border-radius: 8px;
   border: 1px solid #222a33;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.log-candidate { font-weight: 600; color: var(--text); }
-.log-score { font-variant-numeric: tabular-nums; }
-.log-score.hit { color: var(--right); }
-.log-score.miss { color: var(--muted); }
+.log-candidate {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.log-scores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-scores li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.82rem;
+  padding: 2px 0;
+  border: none !important;
+  background: transparent !important;
+}
+
+.log-scores li.hit .log-score-label { color: var(--right); font-weight: 600; }
+.log-scores li.miss .log-score-label { color: var(--muted); }
+
+.log-score-label {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.log-score-reason {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.log-scores li.hit .log-score-reason { color: #b8c8c0; }
 
 @media (max-width: 900px) {
   main {
@@ -237,4 +278,6 @@ button.secondary {
 }
 .link {
   stroke-opacity: 0.6;
+  cursor: help;
 }
+.link:hover { stroke-opacity: 1; }
