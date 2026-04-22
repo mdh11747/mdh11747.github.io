@@ -1,6 +1,6 @@
 (() => {
   // ---------- config ----------
-  const LINK_THRESHOLD = 40;
+  const LINK_THRESHOLD = 60;
   const BACKEND_URL = (window.BL_CONFIG && window.BL_CONFIG.backendUrl) || '';
 
   // ---------- custom instructions for the scoring model ----------
@@ -25,6 +25,49 @@
     '  {"scores":[{"word":"<target>","score":<0-100>,"reason":"<short>"}, ...]}',
     'Return exactly one entry per target word, preserving the order provided.'
   ].join('\n');
+
+  // Prompt for generating new start-word pairs. The goal is maximum
+  // semantic distance between two everyday words — the harder the bridge,
+  // the better the puzzle.
+  const WORD_GEN_INSTRUCTIONS = [
+    'You are generating the two endpoint words for a word-association puzzle.',
+    'Produce two common English words that are as semantically UNRELATED as you can possibly make them.',
+    'Hard requirements:',
+    '  - Both must be everyday words a general audience instantly recognizes. Prefer concrete nouns like "bicycle", "potato", "museum". No rare, technical, archaic, or proper nouns.',
+    '  - They must come from entirely different conceptual domains (e.g., a kitchen object and a weather phenomenon; a farm animal and an abstract emotion).',
+    '  - No shared cultural association, metaphor, idiom, or common co-occurrence.',
+    '  - No surface similarity: no rhyme, no alliteration, no shared distinctive letters.',
+    '  - Avoid obvious dichotomies (hot/cold, up/down, happy/sad).',
+    '  - The pair should be solvable — a motivated player CAN eventually bridge them with enough intermediate words — but the direct association should be effectively zero.',
+    'Process: silently brainstorm 5 candidate pairs, then pick the pair with the greatest semantic distance.',
+    'Output (strict JSON only, no prose, no markdown fences):',
+    '  {"left":"<word>","right":"<word>","rationale":"<1 sentence on why these are maximally unrelated>"}'
+  ].join('\n');
+
+  async function generateStartWords() {
+    if (!BACKEND_URL) throw new Error('No backend URL configured.');
+    const nonce = Math.random().toString(36).slice(2, 10);
+    const prompt = `${WORD_GEN_INSTRUCTIONS}\n\nVariety nonce (ignore for content, but use to produce a different answer than you would without it): ${nonce}`;
+
+    const res = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: prompt }),
+    });
+    if (!res.ok) throw new Error(`Backend ${res.status}`);
+    const data = await res.json();
+    const content = data?.content ?? data?.message ?? '';
+    const parsed = extractJson(content);
+    if (!parsed || typeof parsed.left !== 'string' || typeof parsed.right !== 'string') {
+      console.warn('[generate] bad model output:', content);
+      throw new Error('Model returned unparseable word pair.');
+    }
+    const clean = s => s.trim().toLowerCase().replace(/[^a-z\- ]/g, '');
+    const left = clean(parsed.left);
+    const right = clean(parsed.right);
+    if (!left || !right || left === right) throw new Error('Model returned an invalid pair.');
+    return [left, right];
+  }
 
   const SEED_WORDS = [
     'banana','telephone','volcano','library','tornado','piano','astronaut','bicycle','magnet','whisper',
@@ -137,8 +180,31 @@
   let width = svgEl.clientWidth || 800;
   let height = svgEl.clientHeight || 460;
   svg.attr('viewBox', [0, 0, width, height]);
-  const linkGroup = svg.append('g').attr('class', 'links');
-  const nodeGroup = svg.append('g').attr('class', 'nodes');
+  const zoomContainer = svg.append('g').attr('class', 'zoom-container');
+  const linkGroup = zoomContainer.append('g').attr('class', 'links');
+  const nodeGroup = zoomContainer.append('g').attr('class', 'nodes');
+
+  // Zoom / pan: wheel scroll and pinch zoom the board. Clicking a node
+  // still starts a drag because the filter below lets mousedown/touchstart
+  // on nodes pass through to the drag behavior.
+  const zoom = d3.zoom()
+    .scaleExtent([0.3, 4])
+    .filter((event) => {
+      if (event.type === 'mousedown' || event.type === 'touchstart') {
+        if (event.target && event.target.closest && event.target.closest('.node')) {
+          return false;
+        }
+      }
+      return !event.ctrlKey && !event.button;
+    })
+    .on('zoom', (event) => {
+      zoomContainer.attr('transform', event.transform);
+    });
+  svg.call(zoom);
+
+  function resetZoom() {
+    svg.transition().duration(250).call(zoom.transform, d3.zoomIdentity);
+  }
 
   const simulation = d3.forceSimulation()
     .force('link', d3.forceLink().id(d => d.id).distance(d => 110 - (d.score || 50) * 0.4).strength(0.7))
@@ -285,8 +351,22 @@
     logList.prepend(li);
   }
 
-  function startGame() {
-    const [left, right] = pickTwoWords();
+  async function startGame() {
+    newGameBtn.disabled = true;
+    submitBtn.disabled = true;
+    setStatus('Generating a new puzzle...');
+    wordLeftEl.textContent = '…';
+    wordRightEl.textContent = '…';
+
+    let left, right, usedFallback = false;
+    try {
+      [left, right] = await generateStartWords();
+    } catch (err) {
+      console.warn('[startGame] AI generation failed, falling back to seed list:', err.message);
+      [left, right] = pickTwoWords();
+      usedFallback = true;
+    }
+
     state.leftId = 0;
     state.rightId = 1;
     state.nodes = [
@@ -303,8 +383,14 @@
     wordRightEl.textContent = right;
     thresholdInfo.textContent = `Links form when the LLM scores relatedness ≥ ${state.threshold}%.`;
     logList.innerHTML = '';
-    setStatus('Pick a word you think relates to either endpoint.');
+    setStatus(usedFallback
+      ? 'Couldn\'t reach the AI word generator. Fell back to a random pair.'
+      : 'Pick a word you think relates to either endpoint.',
+      usedFallback ? 'error' : '');
+    resetZoom();
     redraw();
+    newGameBtn.disabled = false;
+    submitBtn.disabled = false;
     input.focus();
   }
 

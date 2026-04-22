@@ -100,7 +100,10 @@ main {
   background: linear-gradient(180deg, #10151c 0%, #131923 100%);
   border-radius: 10px;
   border: 1px solid #222a33;
+  cursor: grab;
+  touch-action: none;
 }
+#graph:active { cursor: grabbing; }
 
 .status {
   min-height: 20px;
