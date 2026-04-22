@@ -220,6 +220,14 @@ button.secondary {
   font-size: 0.95rem;
 }
 
+.log-candidate-note {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.82em;
+  font-style: italic;
+  margin-left: 4px;
+}
+
 .log-scores {
   list-style: none;
   margin: 0;

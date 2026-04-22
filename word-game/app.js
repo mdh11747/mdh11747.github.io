@@ -8,63 +8,119 @@
   // model should behave for this game, regardless of any system prompt baked
   // into the Heroku backend.
   const MODEL_INSTRUCTIONS = [
-    'You are a semantic-relatedness judge for a word-association game called Better Linxicon.',
-    'You will receive a candidate word and a list of target words. Identify which targets are related to the candidate strongly enough to form a LINK.',
-    'A link forms at relatedness score 60 or higher on a 0-100 scale.',
+    'You are a word validator AND semantic-relatedness judge for a word-association game called Better Linxicon.',
+    'You will receive a candidate word (submitted by the player) and a list of target words currently on the board.',
     '',
-    'Scoring anchors:',
-    '  0-20  = unrelated (no meaningful association) [NO LINK]',
-    '  21-40 = faint or very abstract connection    [NO LINK]',
-    '  41-59 = clear but indirect association        [STILL NO LINK]',
-    '  60-80 = strongly related (shared domain, common co-occurrence, typical pairing) [LINK]',
-    '  81-100 = near-synonym, part-of, iconic pairing, or cultural shorthand          [LINK]',
+    'STEP 1 — Validate the candidate word:',
+    '  "valid"   = a real, recognizable English word as written.',
+    '  "typo"    = an obvious typo or misspelling of a real word (e.g., "telefone"->"telephone", "bannana"->"banana", "libary"->"library", "recieve"->"receive"). Set "correctedWord" to the intended word. Only correct OBVIOUS typos where the intent is unambiguous; if the word could plausibly be multiple things, mark it "invalid" instead.',
+    '  "invalid" = gibberish, random keystrokes, foreign-language words, proper nouns, acronyms, or anything not a recognizable English common word.',
     '',
-    'Rules:',
-    '  - Be decisive. Do NOT reward merely sharing a letter, sounding alike, or rhyming.',
-    '  - Do NOT reward generic relations like "both are nouns" or "both exist".',
-    '  - Metaphor, idiom, and cultural association count. Surface-form similarity does not.',
-    '  - If the candidate is gibberish or an unrecognized word, produce zero links.',
+    'STEP 2 — Score links (skip this step if wordStatus is "invalid"; for "typo" use the correctedWord as the basis):',
+    '  A link forms at relatedness score 60 or higher (0-100 scale).',
+    '',
+    '  Scoring anchors:',
+    '    0-20   = unrelated',
+    '    21-40  = faint or abstract',
+    '    41-59  = clear but indirect               [NO LINK]',
+    '    60-80  = strongly related                 [LINK]',
+    '    81-100 = near-synonym or iconic pairing   [LINK]',
+    '',
+    '  Rules:',
+    '    - Surface similarity (shared letters, rhyme, alliteration) does NOT count.',
+    '    - Do NOT reward generic relations ("both are nouns").',
+    '    - Metaphor, idiom, and cultural association CAN count.',
     '',
     'Output format — strict JSON only, no prose, no markdown fences, no commentary:',
-    '  {"links":[{"word":"<target>","score":<integer 60-100>,"reason":"<one short sentence>"}],"overallReason":"<one short sentence>"}',
+    '  {"wordStatus":"valid"|"typo"|"invalid","correctedWord":"<string, only populated when typo; otherwise empty string>","links":[{"word":"<target>","score":<integer 60-100>,"reason":"<one short sentence>"}],"overallReason":"<one short sentence or empty string>"}',
     '',
-    'CRITICAL size rules (the response gets truncated if it is too long):',
-    '  - Include ONLY targets that scored 60 or higher. OMIT every target below 60 entirely — do not list them at all.',
-    '  - Provide "overallReason" ONLY when "links" is empty; it should explain in one sentence why the candidate has no meaningful connection to any target. When at least one link exists, set "overallReason" to an empty string "".',
+    'CRITICAL size rules (your response will be truncated if too long):',
+    '  - In "links", include ONLY targets that scored 60 or higher. OMIT every target below 60 entirely.',
+    '  - Populate "overallReason" when: wordStatus is "invalid" (explain why it is not a valid word), OR links is empty (explain why the candidate has no meaningful connection to any target). Otherwise "".',
     '  - Keep each "reason" to one short sentence, under 15 words.'
   ].join('\n');
 
   // Prompt for generating new start-word pairs. The goal is maximum
-  // semantic distance between two everyday words — the harder the bridge,
-  // the better the puzzle.
+  // semantic distance between two everyday words.
   const WORD_GEN_INSTRUCTIONS = [
     'You are generating the two endpoint words for a word-association puzzle.',
     'Produce two common English words that are as semantically UNRELATED as you can possibly make them.',
     'Hard requirements:',
-    '  - Both must be everyday words a general audience instantly recognizes. Prefer concrete nouns like "bicycle", "potato", "museum". No rare, technical, archaic, or proper nouns.',
-    '  - They must come from entirely different conceptual domains (e.g., a kitchen object and a weather phenomenon; a farm animal and an abstract emotion).',
+    '  - Each word must be a SINGLE word (no spaces, no hyphens), at least 3 letters long, all lowercase letters only.',
+    '  - Both must be everyday words a general audience instantly recognizes. Prefer concrete nouns. No rare, technical, archaic, or proper nouns.',
+    '  - They must come from entirely different conceptual domains.',
     '  - No shared cultural association, metaphor, idiom, or common co-occurrence.',
     '  - No surface similarity: no rhyme, no alliteration, no shared distinctive letters.',
-    '  - Avoid obvious dichotomies (hot/cold, up/down, happy/sad).',
-    '  - The pair should be solvable — a motivated player CAN eventually bridge them with enough intermediate words — but the direct association should be effectively zero.',
-    'Process: silently brainstorm 5 candidate pairs, then pick the pair with the greatest semantic distance.',
+    '  - Avoid obvious dichotomies (hot/cold, up/down).',
+    '  - The pair should be solvable — a motivated player CAN eventually bridge them — but the direct association should be effectively zero.',
+    'Process: silently brainstorm 5 candidate pairs that satisfy the letter and avoid-list constraints, then pick the pair with the greatest semantic distance.',
     'Output (strict JSON only, no prose, no markdown fences):',
-    '  {"left":"<word>","right":"<word>","rationale":"<1 sentence on why these are maximally unrelated>"}'
+    '  {"left":"<word>","right":"<word>","rationale":"<1 sentence on why these are unrelated>"}'
   ].join('\n');
+
+  // Avoid list: persists the last N endpoint words across sessions so the LLM
+  // doesn't hand us the same pair twice in a row.
+  const AVOID_KEY = 'betterLinxicon.recentWords.v1';
+  const AVOID_LIMIT = 30;
+  function loadAvoidList() {
+    try {
+      const raw = localStorage.getItem(AVOID_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list.filter(w => typeof w === 'string') : [];
+    } catch { return []; }
+  }
+  function addToAvoidList(...words) {
+    const current = loadAvoidList();
+    const seen = new Set(current);
+    for (const w of words) {
+      const clean = String(w || '').toLowerCase().trim();
+      if (clean && !seen.has(clean)) { current.unshift(clean); seen.add(clean); }
+    }
+    const trimmed = current.slice(0, AVOID_LIMIT);
+    try { localStorage.setItem(AVOID_KEY, JSON.stringify(trimmed)); } catch {}
+  }
+
+  // Skip letters with very few common words to avoid dead-end constraints.
+  const GEN_LETTERS = 'abcdefghijklmnoprstuvwy';
+  function randomStartLetter() {
+    return GEN_LETTERS[Math.floor(Math.random() * GEN_LETTERS.length)];
+  }
 
   async function generateStartWords({ onRetry } = {}) {
     if (!BACKEND_URL) throw new Error('No backend URL configured.');
     const nonce = Math.random().toString(36).slice(2, 10);
-    const prompt = `${WORD_GEN_INSTRUCTIONS}\n\nVariety nonce (ignore for content, but use to produce a different answer than you would without it): ${nonce}`;
+
+    // Two distinct random starting letters pin the LLM to a narrow slice of
+    // its vocabulary; combined with the avoid list this kills repetition.
+    const l1 = randomStartLetter();
+    let l2 = randomStartLetter();
+    while (l2 === l1) l2 = randomStartLetter();
+
+    const avoid = loadAvoidList();
+    const constraintLines = [
+      '',
+      'Constraints for THIS generation (MUST be satisfied exactly):',
+      `  - The first word must start with the letter "${l1}".`,
+      `  - The second word must start with the letter "${l2}".`,
+    ];
+    if (avoid.length) {
+      constraintLines.push(`  - Do NOT use any of these recently-used words: ${avoid.join(', ')}.`);
+    }
+    constraintLines.push(`  - Variety nonce (produce a different answer each time this changes): ${nonce}`);
+
+    const prompt = `${WORD_GEN_INSTRUCTIONS}\n${constraintLines.join('\n')}`;
     const parsed = await callAndParse(
       prompt,
       p => typeof p.left === 'string' && typeof p.right === 'string',
       { onRetry }
     );
-    const clean = s => s.trim().toLowerCase().replace(/[^a-z\- ]/g, '');
+    const clean = s => s.trim().toLowerCase().replace(/[^a-z]/g, '');
     const left = clean(parsed.left);
     const right = clean(parsed.right);
     if (!left || !right || left === right) throw new Error('Model returned an invalid pair.');
+    if (left.length < 3 || right.length < 3) throw new Error('Model returned too-short words.');
+
+    addToAvoidList(left, right);
     return [left, right];
   }
 
@@ -168,7 +224,14 @@
   async function scoreRelatedness(candidate, targets, { onRetry } = {}) {
     if (!BACKEND_URL) throw new Error('No backend URL configured (edit config.js).');
     const prompt = buildPrompt(candidate, targets);
-    const parsed = await callAndParse(prompt, p => Array.isArray(p.links), { onRetry });
+    const parsed = await callAndParse(
+      prompt,
+      p => typeof p.wordStatus === 'string' && Array.isArray(p.links),
+      { onRetry }
+    );
+
+    const wordStatus = ['valid', 'typo', 'invalid'].includes(parsed.wordStatus) ? parsed.wordStatus : 'valid';
+    const correctedWord = (parsed.correctedWord || '').toString().trim().toLowerCase().replace(/[^a-z]/g, '');
 
     const targetSet = new Set(targets);
     const links = [];
@@ -183,7 +246,7 @@
       });
     }
     const overallReason = (parsed.overallReason || '').toString().trim();
-    return { links, overallReason };
+    return { wordStatus, correctedWord, links, overallReason };
   }
 
   // ---------- DOM ----------
@@ -355,12 +418,18 @@
     statusEl.className = `status ${cls}`.trim();
   }
 
-  function appendLog(candidate, links, overallReason) {
+  function appendLog(candidate, links, overallReason, originalTypo) {
     const li = document.createElement('li');
 
     const header = document.createElement('div');
     header.className = 'log-candidate';
     header.textContent = candidate;
+    if (originalTypo) {
+      const note = document.createElement('span');
+      note.className = 'log-candidate-note';
+      note.textContent = ` (from "${originalTypo}")`;
+      header.appendChild(note);
+    }
     li.appendChild(header);
 
     if (links.length > 0) {
@@ -444,24 +513,48 @@
 
   async function submitWord(e) {
     e.preventDefault();
-    const word = input.value.trim().toLowerCase();
-    if (!word) return;
-    if (state.nodes.some(n => n.label === word)) {
-      setStatus(`"${word}" is already on the board.`, 'error');
+    const raw = input.value.trim().toLowerCase();
+    if (!raw) return;
+
+    // Client-side input validation: single English word, 3+ letters.
+    if (!/^[a-z]+$/.test(raw)) {
+      setStatus('One word only — letters a–z, no spaces, numbers, or punctuation.', 'error');
+      return;
+    }
+    if (raw.length < 3) {
+      setStatus('Word must be at least 3 letters.', 'error');
+      return;
+    }
+    if (state.nodes.some(n => n.label === raw)) {
+      setStatus(`"${raw}" is already on the board.`, 'error');
       return;
     }
 
     submitBtn.disabled = true;
-    setStatus(`Scoring "${word}"...`);
+    setStatus(`Scoring "${raw}"...`);
 
     const existingWords = state.nodes.map(n => n.label);
     try {
-      const { links, overallReason } = await scoreRelatedness(word, existingWords, {
-        onRetry: () => setStatus(`Scoring "${word}"... retrying, the model's first reply was malformed.`),
+      const { wordStatus, correctedWord, links, overallReason } = await scoreRelatedness(raw, existingWords, {
+        onRetry: () => setStatus(`Scoring "${raw}"... retrying, the model's first reply was malformed.`),
       });
 
+      if (wordStatus === 'invalid') {
+        setStatus(overallReason
+          ? `"${raw}" isn't a valid word — ${overallReason}`
+          : `"${raw}" isn't a recognized word.`, 'error');
+        return;
+      }
+
+      const finalWord = (wordStatus === 'typo' && correctedWord) ? correctedWord : raw;
+
+      if (finalWord !== raw && state.nodes.some(n => n.label === finalWord)) {
+        setStatus(`"${raw}" looks like "${finalWord}", which is already on the board.`, 'error');
+        return;
+      }
+
       const newId = state.nodes.length ? Math.max(...state.nodes.map(n => n.id)) + 1 : 0;
-      state.nodes.push({ id: newId, label: word, kind: 'float' });
+      state.nodes.push({ id: newId, label: finalWord, kind: 'float' });
 
       const byLabel = new Map(state.nodes.map(n => [n.label, n]));
       let linkedCount = 0;
@@ -473,17 +566,18 @@
       }
 
       recomputeConnectivity();
-      appendLog(word, links, overallReason);
+      appendLog(finalWord, links, overallReason, wordStatus === 'typo' ? raw : '');
       redraw();
       input.value = '';
 
       if (!state.won) {
+        const prefix = wordStatus === 'typo' ? `Interpreted "${raw}" as "${finalWord}". ` : '';
         if (linkedCount === 0) {
-          setStatus(overallReason
-            ? `"${word}" floats — ${overallReason}`
-            : `"${word}" didn't link to anything. It's floating.`);
+          setStatus(prefix + (overallReason
+            ? `"${finalWord}" floats — ${overallReason}`
+            : `"${finalWord}" didn't link to anything. It's floating.`));
         } else {
-          setStatus(`"${word}" linked to ${linkedCount} word${linkedCount > 1 ? 's' : ''}.`);
+          setStatus(prefix + `"${finalWord}" linked to ${linkedCount} word${linkedCount > 1 ? 's' : ''}.`);
         }
       }
     } catch (err) {
