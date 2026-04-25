@@ -1,0 +1,42 @@
+name: Generate daily word puzzle
+
+on:
+  schedule:
+    # Midnight Eastern Time, year-round. GitHub cron is UTC and DST-unaware,
+    # so we fire at both possible UTC offsets; the script tags puzzles with
+    # the Eastern calendar date and skips if today's puzzle already exists.
+    - cron: '0 4 * * *'  # 00:00 EDT (summer)
+    - cron: '0 5 * * *'  # 00:00 EST (winter)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-words
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate daily pair
+        run: node .github/scripts/generate-daily-words.mjs
+
+      - name: Commit and push if changed
+        run: |
+          if [ -n "$(git status --porcelain word-game/daily.json)" ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add word-game/daily.json
+            git commit -m "word-game: daily puzzle for $(TZ='America/New_York' date +%Y-%m-%d)"
+            git push
+          else
+            echo "No changes to commit."
+          fi

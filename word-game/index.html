@@ -20,6 +20,7 @@
           <span class="label">Start</span>
           <span id="word-left" class="word">&mdash;</span>
         </div>
+        <div id="mode-banner" class="mode-banner" hidden></div>
         <div class="endpoint endpoint-right">
           <span class="label">End</span>
           <span id="word-right" class="word">&mdash;</span>
@@ -33,7 +34,9 @@
       <form id="word-form" autocomplete="off">
         <input id="word-input" type="text" placeholder="type a word (3+ letters) and press enter" maxlength="30" autocapitalize="off" autocorrect="off" spellcheck="false" required />
         <button type="submit" id="submit-btn">Link</button>
-        <button type="button" id="new-game-btn" class="secondary">New game</button>
+        <button type="button" id="share-btn" class="share" hidden>Share results</button>
+        <button type="button" id="daily-btn" class="secondary">Today's daily</button>
+        <button type="button" id="new-game-btn" class="secondary">Free play</button>
       </form>
       <div id="threshold-info" class="muted"></div>
     </section>

@@ -258,11 +258,43 @@
   const input = document.getElementById('word-input');
   const submitBtn = document.getElementById('submit-btn');
   const newGameBtn = document.getElementById('new-game-btn');
+  const dailyBtn = document.getElementById('daily-btn');
+  const shareBtn = document.getElementById('share-btn');
+  const modeBanner = document.getElementById('mode-banner');
   const thresholdInfo = document.getElementById('threshold-info');
   const logList = document.getElementById('log-list');
 
+  async function loadDailyPair() {
+    const res = await fetch('daily.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`daily.json ${res.status}`);
+    const data = await res.json();
+    if (!data || typeof data.left !== 'string' || typeof data.right !== 'string') {
+      throw new Error('daily.json is malformed');
+    }
+    return data;
+  }
+
+  function formatDailyDate(iso) {
+    // iso is YYYY-MM-DD (Eastern calendar date). Render as-is, no timezone shift.
+    const [y, m, d] = iso.split('-').map(Number);
+    if (!y || !m || !d) return iso;
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.toLocaleDateString(undefined, { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function setModeBanner(text) {
+    if (!text) {
+      modeBanner.hidden = true;
+      modeBanner.textContent = '';
+    } else {
+      modeBanner.hidden = false;
+      modeBanner.textContent = text;
+    }
+  }
+
   // ---------- state ----------
   const state = {
+    mode: 'daily',
     threshold: LINK_THRESHOLD,
     leftId: null,
     rightId: null,
@@ -272,6 +304,8 @@
     connectedToLeft: new Set(),
     connectedToRight: new Set(),
     won: false,
+    dailyDate: null,
+    guesses: 0,
   };
 
   // ---------- D3 ----------
@@ -408,6 +442,66 @@
     if (state.connectedToLeft.has(state.rightId) && !state.won) {
       state.won = true;
       setStatus(`You connected ${nodeById(state.leftId).label} to ${nodeById(state.rightId).label}!`, 'win');
+      if (state.mode === 'daily' && shareBtn) shareBtn.hidden = false;
+    }
+  }
+
+  function shortestPathHops(startId, endId) {
+    if (startId === endId) return 0;
+    const dist = new Map([[startId, 0]]);
+    const queue = [startId];
+    while (queue.length) {
+      const cur = queue.shift();
+      const neighbors = state.adjacency.get(cur);
+      if (!neighbors) continue;
+      for (const n of neighbors) {
+        if (dist.has(n)) continue;
+        dist.set(n, dist.get(cur) + 1);
+        if (n === endId) return dist.get(n);
+        queue.push(n);
+      }
+    }
+    return -1;
+  }
+
+  function buildShareText() {
+    const dateLabel = state.dailyDate ? formatDailyDate(state.dailyDate) : '';
+    const guesses = state.guesses;
+    const hops = shortestPathHops(state.leftId, state.rightId);
+    const intermediate = Math.max(0, hops - 1);
+    const track = '🟧' + '🔗'.repeat(intermediate) + '🟩';
+    const url = 'https://mdh11747.github.io/word-game/';
+    const lines = [
+      `Better Linxicon — ${dateLabel}`,
+      `${guesses} word${guesses === 1 ? '' : 's'} • ${hops}-hop bridge`,
+      track,
+      url,
+    ];
+    return lines.join('\n');
+  }
+
+  async function handleShare() {
+    if (!state.won || state.mode !== 'daily') return;
+    const text = buildShareText();
+    const shareData = { title: 'Better Linxicon', text };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+        console.warn('[share] navigator.share failed, falling back to clipboard:', err);
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      const original = shareBtn.textContent;
+      shareBtn.textContent = 'Copied!';
+      shareBtn.disabled = true;
+      setTimeout(() => { shareBtn.textContent = original; shareBtn.disabled = false; }, 1500);
+    } catch (err) {
+      console.warn('[share] clipboard write failed:', err);
+      window.prompt('Copy your results:', text);
     }
   }
 
@@ -466,22 +560,48 @@
     logList.prepend(li);
   }
 
-  async function startGame() {
+  async function startGame(mode = 'daily') {
     newGameBtn.disabled = true;
+    if (dailyBtn) dailyBtn.disabled = true;
     submitBtn.disabled = true;
-    setStatus('Generating a new puzzle...');
+    state.mode = mode;
     wordLeftEl.textContent = '…';
     wordRightEl.textContent = '…';
+    setModeBanner('');
 
-    let left, right, usedFallback = false;
-    try {
-      [left, right] = await generateStartWords({
-        onRetry: () => setStatus('The model\'s first reply was malformed. Retrying...'),
-      });
-    } catch (err) {
-      console.warn('[startGame] AI generation failed, falling back to seed list:', err.message);
-      [left, right] = pickTwoWords();
-      usedFallback = true;
+    let left, right;
+    let usedFallback = false;
+    let dailyDate = null;
+    let dailyFallbackReason = '';
+
+    if (mode === 'daily') {
+      setStatus('Loading today\'s daily puzzle...');
+      try {
+        const data = await loadDailyPair();
+        left = data.left;
+        right = data.right;
+        dailyDate = data.date;
+      } catch (err) {
+        console.warn('[startGame] daily.json unavailable, falling back to free play:', err.message);
+        dailyFallbackReason = err.message;
+        mode = 'free';
+        state.mode = 'free';
+      }
+    }
+
+    if (mode === 'free') {
+      setStatus(dailyFallbackReason
+        ? 'Daily puzzle unavailable — generating a fresh free-play pair instead...'
+        : 'Generating a new puzzle...');
+      try {
+        [left, right] = await generateStartWords({
+          onRetry: () => setStatus('The model\'s first reply was malformed. Retrying...'),
+        });
+      } catch (err) {
+        console.warn('[startGame] AI generation failed, falling back to seed list:', err.message);
+        [left, right] = pickTwoWords();
+        usedFallback = true;
+      }
     }
 
     state.leftId = 0;
@@ -495,18 +615,30 @@
     state.connectedToLeft = new Set([0]);
     state.connectedToRight = new Set([1]);
     state.won = false;
+    state.dailyDate = state.mode === 'daily' ? dailyDate : null;
+    state.guesses = 0;
+    if (shareBtn) shareBtn.hidden = true;
 
     wordLeftEl.textContent = left;
     wordRightEl.textContent = right;
     thresholdInfo.textContent = `Links form when the LLM scores relatedness ≥ ${state.threshold}%.`;
     logList.innerHTML = '';
-    setStatus(usedFallback
-      ? 'Couldn\'t reach the AI word generator. Fell back to a random pair.'
-      : 'Pick a word you think relates to either endpoint.',
-      usedFallback ? 'error' : '');
+
+    if (state.mode === 'daily' && dailyDate) {
+      setModeBanner(`Daily — ${formatDailyDate(dailyDate)}`);
+      setStatus('Today\'s puzzle. Pick a word you think relates to either endpoint.');
+    } else if (usedFallback) {
+      setModeBanner('Free play');
+      setStatus('Couldn\'t reach the AI word generator. Fell back to a random pair.', 'error');
+    } else {
+      setModeBanner('Free play');
+      setStatus('Pick a word you think relates to either endpoint.');
+    }
+
     resetZoom();
     redraw();
     newGameBtn.disabled = false;
+    if (dailyBtn) dailyBtn.disabled = false;
     submitBtn.disabled = false;
     input.focus();
   }
@@ -555,6 +687,7 @@
 
       const newId = state.nodes.length ? Math.max(...state.nodes.map(n => n.id)) + 1 : 0;
       state.nodes.push({ id: newId, label: finalWord, kind: 'float' });
+      state.guesses += 1;
 
       const byLabel = new Map(state.nodes.map(n => [n.label, n]));
       let linkedCount = 0;
@@ -602,7 +735,9 @@
   });
 
   form.addEventListener('submit', submitWord);
-  newGameBtn.addEventListener('click', startGame);
+  newGameBtn.addEventListener('click', () => startGame('free'));
+  if (dailyBtn) dailyBtn.addEventListener('click', () => startGame('daily'));
+  if (shareBtn) shareBtn.addEventListener('click', handleShare);
 
-  startGame();
+  startGame('daily');
 })();
