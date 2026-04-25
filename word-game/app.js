@@ -274,6 +274,42 @@
     return data;
   }
 
+  // Persists daily progress (graph + log + win state) so a refresh resumes
+  // exactly where the player left off, and a solved daily stays solved.
+  const DAILY_PROGRESS_KEY = 'betterLinxicon.daily.progress.v1';
+  function loadDailyProgress(date) {
+    try {
+      const raw = localStorage.getItem(DAILY_PROGRESS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.date === date) return parsed;
+      localStorage.removeItem(DAILY_PROGRESS_KEY);
+    } catch {}
+    return null;
+  }
+  function saveDailyProgress() {
+    if (state.mode !== 'daily' || !state.dailyDate) return;
+    const leftNode = nodeById(state.leftId);
+    const rightNode = nodeById(state.rightId);
+    if (!leftNode || !rightNode) return;
+    const payload = {
+      date: state.dailyDate,
+      left: leftNode.label,
+      right: rightNode.label,
+      nodes: state.nodes.map(n => ({ id: n.id, label: n.label, kind: n.kind })),
+      edges: state.links.map(l => ({
+        a: typeof l.source === 'object' ? l.source.id : l.source,
+        b: typeof l.target === 'object' ? l.target.id : l.target,
+        score: l.score,
+        reason: l.reason || '',
+      })),
+      log: state.logEntries || [],
+      guesses: state.guesses,
+      won: state.won,
+    };
+    try { localStorage.setItem(DAILY_PROGRESS_KEY, JSON.stringify(payload)); } catch {}
+  }
+
   function formatDailyDate(iso) {
     // iso is YYYY-MM-DD (Eastern calendar date). Render as-is, no timezone shift.
     const [y, m, d] = iso.split('-').map(Number);
@@ -306,6 +342,7 @@
     won: false,
     dailyDate: null,
     guesses: 0,
+    logEntries: [],
   };
 
   // ---------- D3 ----------
@@ -573,6 +610,7 @@
     let usedFallback = false;
     let dailyDate = null;
     let dailyFallbackReason = '';
+    let saved = null;
 
     if (mode === 'daily') {
       setStatus('Loading today\'s daily puzzle...');
@@ -581,6 +619,10 @@
         left = data.left;
         right = data.right;
         dailyDate = data.date;
+        const candidate = loadDailyProgress(dailyDate);
+        if (candidate && candidate.left === left && candidate.right === right) {
+          saved = candidate;
+        }
       } catch (err) {
         console.warn('[startGame] daily.json unavailable, falling back to free play:', err.message);
         dailyFallbackReason = err.message;
@@ -617,6 +659,7 @@
     state.won = false;
     state.dailyDate = state.mode === 'daily' ? dailyDate : null;
     state.guesses = 0;
+    state.logEntries = [];
     if (shareBtn) shareBtn.hidden = true;
 
     wordLeftEl.textContent = left;
@@ -624,9 +667,33 @@
     thresholdInfo.textContent = `Links form when the LLM scores relatedness ≥ ${state.threshold}%.`;
     logList.innerHTML = '';
 
+    if (saved && state.mode === 'daily') {
+      for (const n of saved.nodes) {
+        if (n.id === 0 || n.id === 1) continue;
+        state.nodes.push({ id: n.id, label: n.label, kind: n.kind || 'float' });
+      }
+      for (const e of (saved.edges || [])) {
+        addEdge(e.a, e.b, e.score, e.reason);
+      }
+      state.guesses = saved.guesses || 0;
+      state.logEntries = Array.isArray(saved.log) ? saved.log.slice() : [];
+      for (const entry of state.logEntries) {
+        appendLog(entry.candidate, entry.links || [], entry.overallReason || '', entry.originalTypo || '');
+      }
+      recomputeConnectivity();
+    }
+
+    const dailyDone = state.mode === 'daily' && state.won;
+
     if (state.mode === 'daily' && dailyDate) {
       setModeBanner(`Daily — ${formatDailyDate(dailyDate)}`);
-      setStatus('Today\'s puzzle. Pick a word you think relates to either endpoint.');
+      if (state.won) {
+        setStatus(`✓ Today's daily already solved in ${state.guesses} word${state.guesses === 1 ? '' : 's'}. Come back tomorrow, or try Free play.`, 'win');
+      } else if (saved && state.guesses > 0) {
+        setStatus(`Continuing your saved progress — ${state.guesses} word${state.guesses === 1 ? '' : 's'} so far.`);
+      } else {
+        setStatus('Today\'s puzzle. Pick a word you think relates to either endpoint.');
+      }
     } else if (usedFallback) {
       setModeBanner('Free play');
       setStatus('Couldn\'t reach the AI word generator. Fell back to a random pair.', 'error');
@@ -639,12 +706,17 @@
     redraw();
     newGameBtn.disabled = false;
     if (dailyBtn) dailyBtn.disabled = false;
-    submitBtn.disabled = false;
-    input.focus();
+    input.disabled = dailyDone;
+    submitBtn.disabled = dailyDone;
+    if (!dailyDone) input.focus();
   }
 
   async function submitWord(e) {
     e.preventDefault();
+    if (state.mode === 'daily' && state.won) {
+      setStatus('You already solved today\'s daily. Try Free play, or come back tomorrow.', 'win');
+      return;
+    }
     const raw = input.value.trim().toLowerCase();
     if (!raw) return;
 
@@ -699,8 +771,20 @@
       }
 
       recomputeConnectivity();
-      appendLog(finalWord, links, overallReason, wordStatus === 'typo' ? raw : '');
+      const logEntry = {
+        candidate: finalWord,
+        links,
+        overallReason,
+        originalTypo: wordStatus === 'typo' ? raw : '',
+      };
+      state.logEntries.push(logEntry);
+      appendLog(logEntry.candidate, logEntry.links, logEntry.overallReason, logEntry.originalTypo);
       redraw();
+      saveDailyProgress();
+      if (state.mode === 'daily' && state.won) {
+        input.disabled = true;
+        submitBtn.disabled = true;
+      }
       input.value = '';
 
       if (!state.won) {
@@ -716,8 +800,10 @@
     } catch (err) {
       setStatus(`Error: ${err.message}`, 'error');
     } finally {
-      submitBtn.disabled = false;
-      input.focus();
+      const lock = state.mode === 'daily' && state.won;
+      submitBtn.disabled = lock;
+      input.disabled = lock;
+      if (!lock) input.focus();
     }
   }
 
