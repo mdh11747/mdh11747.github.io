@@ -1,9 +1,14 @@
 {
-  "date": "2026-04-26",
-  "left": "turtle",
-  "right": "ocean",
-  "rationale": "A turtle is a terrestrial and aquatic animal, while the ocean is a vast body of saltwater, making them conceptually unrelated.",
+  "date": "2026-04-27",
+  "left": "ice",
+  "right": "apple",
+  "rationale": "Ice and apple come from entirely different domains, with ice being a solid form of water and apple being a type of fruit.",
   "history": [
+    {
+      "date": "2026-04-26",
+      "left": "turtle",
+      "right": "ocean"
+    },
     {
       "date": "2026-04-25",
       "left": "lamp",
