@@ -1,9 +1,14 @@
 {
-  "date": "2026-04-28",
-  "left": "giraffe",
-  "right": "book",
-  "rationale": "A giraffe is a type of animal found in the wild, while a book is a physical object used for reading, representing entirely different domains of existence.",
+  "date": "2026-04-29",
+  "left": "unicorn",
+  "right": "rug",
+  "rationale": "Unicorns are mythical creatures, while rugs are commonplace household items, representing completely different realms of existence.",
   "history": [
+    {
+      "date": "2026-04-28",
+      "left": "giraffe",
+      "right": "book"
+    },
     {
       "date": "2026-04-27",
       "left": "ice",
